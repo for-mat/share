@@ -1,0 +1,280 @@
+#!/bin/sh
+
+initialize()
+{
+ open_increment_back=1
+ avemonth=
+ aveweek=0
+ aveweekday=1
+ aveday=1
+ avehour=3
+ avemin=1
+ avesec=05
+
+ fulyear=
+ fulmonth=
+ fulweek=1
+ fulday=
+ sleep_time=30
+
+ dp_server=1
+ isnew_inc=0
+ isnew_full=0
+ backdir=`find / -name mysql_soft_sh`
+ oldbackdir=${backdir}/mysql_backup/oldback
+# LOGTIME=`date +'%Y%m'`
+}
+
+sys_check()
+{
+ if [ -z ${fulmonth} ];then
+    backmonth=1
+ else
+    backmonth=${fulmonth}
+ fi
+
+ if [ -z ${fulday} ];then
+    backday=1
+ else
+    backday=${fulday}
+ fi
+
+ if [ -z ${aveweekday} ];then
+    backweekday=1
+ else
+    backweekday=${aveweekday}
+ fi
+
+ if [ -z ${avehour} ];then
+    backhour=0
+ else
+    backhour=${avehour}
+ fi
+
+ if [ -z ${avemin} ];then
+    backmin=0
+ else
+    backmin=${avemin}
+ fi
+
+ if [ -z ${avesec} ];then
+    backsec=0
+ else
+    backsec=${avesec}
+ fi
+
+ if test ! -d "${backdir}/mysql_backup"
+ then
+    mkdir ${backdir}/mysql_backup
+    mkdir ${backdir}/mysql_backup/log
+ fi
+
+ if [ ! -d ${oldbackdir} ]
+ then
+   mkdir ${oldbackdir}
+ fi
+}
+
+arr_increbackup()
+{
+ echo  "$(date +'%Y-%m-%d %H:%M:%S')  a new incremental back begin,incremental backup beginning" >> ${backdir}/mysql_backup/log/back_log.${LOGTIME}
+ sh $backdir/mysql_meb.sh incremental ${dp_server}
+ if [ ! $? -eq 0 ];then
+    echo "$(date +'%Y-%m-%d %H:%M:%S') ERROR: backup faild!" >> ${backdir}/mysql_backup/log/back_log.${LOGTIME}
+    exit 1
+ else
+    echo "$(date +'%Y-%m-%d %H:%M:%S') backup completed!" >> ${backdir}/mysql_backup/log/back_log.${LOGTIME}
+    isnew_inc=0
+ fi
+
+ log_user=`ls -l ${backdir}/mysql_backup/log/back_log.${LOGTIME}|awk '{print $3}'`
+ if [ ! "$log_user" = "zabbix" ];then
+    chown -R zabbix:zabbix ${backdir}/mysql_backup/log/
+ fi
+}
+
+arr_remove()
+{
+  echo "$(date +'%Y-%m-%d %H:%M:%S') remove old back from oldback!">>${backdir}/mysql_backup/log/back_log.${LOGTIME}
+  R_file=`find ${oldbackdir} -maxdepth 1 -mindepth 1`
+  rm -rf ${R_file}
+    if [ ! $? -eq 0 ];then
+        echo "$(date +'%Y-%m-%d %H:%M:%S') ERROR: remove old backs faild!" >> ${backdir}/mysql_backup/log/back_log.${LOGTIME}
+        exit 1
+    else
+        echo "$(date +'%Y-%m-%d %H:%M:%S') remove old backs completed!" >> ${backdir}/mysql_backup/log/back_log.${LOGTIME}
+    fi
+}
+
+arr_fullback()
+{
+  echo "$(date +'%Y-%m-%d %H:%M:%S') a new full back begin,full backup beginning..." >> ${backdir}/mysql_backup/log/back_log.${LOGTIME}
+  sh $backdir/mysql_meb.sh full ${dp_server}
+    if [ ! $? -eq 0 ];then
+        echo "$(date +'%Y-%m-%d %H:%M:%S') ERROR: backup faild!" >> ${backdir}/mysql_backup/log/back_log.${LOGTIME}
+        exit 1
+    else
+        echo "$(date +'%Y-%m-%d %H:%M:%S') backup completed!" >> ${backdir}/mysql_backup/log/back_log.${LOGTIME}
+        isnew_inc=0
+        isnew_full=0
+    fi
+
+   log_user=`ls -l ${backdir}/mysql_backup/log/back_log.${LOGTIME}|awk '{print $3}'`
+    if [ ! "$log_user" = "zabbix" ];then
+        chown -R zabbix:zabbix ${backdir}/mysql_backup/log/
+    fi
+}
+
+arr_backup()
+{
+  if [ 1 -eq ${isnew_full} ] && [ ${nowtime} -ge ${backtime} ];then
+      arr_remove
+      arr_fullback
+  elif [ 1 -eq ${isnew_inc} ] && [ ${nowtime} -ge ${backtime} ] && [ 1 -eq ${open_increment_back} ];then
+      arr_increbackup
+  elif [ ${nowtime} -ge ${fultime} ] && [ 0 -ne ${fultime}0 ];then
+       echo "$(date +'%Y-%m-%d %H:%M:%S') a new full back time begin................" >> ${backdir}/mysql_backup/log/back_log.${LOGTIME}
+       varyear=${curyear}
+       varmonth=${curmonth}
+       varweek=${curweek}
+       varweekday=${curweekday}
+       varday=${curday}
+       year=${curyear}
+       month=${curmonth}
+       week=${curweek}
+       weekday=${curweekday}
+       day=${curday}
+       isnew_full=1
+
+  elif [ ${nowtime} -ge ${incretime} ] && [ 0 -ne ${incretime}0 ];then
+       echo "$(date +'%Y-%m-%d %H:%M:%S') a new incremental back time begin................" >> ${backdir}/mysql_backup/log/back_log.${LOGTIME}
+       isnew_inc=1
+       year=${curyear}
+       month=${curmonth}
+       week=${curweek}
+       weekday=${curweekday}
+       day=${curday}
+       hour=${curhour}
+       minute=${curmin}
+       second=${cursec}
+
+  fi
+}
+
+arr_binlog_back()
+{
+  if [ 1 -eq $isnew_inc ];then
+
+     if [ $nowtime_w -ge $backtime ];then
+          arr_increbackup
+     fi
+  else
+     if [ ${stoptime} -ge ${incretime} ];then
+        echo "a back year begin"
+        isnew_inc=1
+        year=$curyear
+        month=$curmonth
+        day=$curday
+        hour=$curhour
+        second=$cursec
+     fi
+  fi
+}
+
+arr_incretime_get()
+{
+  if [ 0 -lt ${aveweek}0 ];then
+     incretime=$(date +'%Y%m%d%H%M%S' -d "${year}-${month}-${day} +${aveweek} week ${dif_weekday} day")
+     backtime=`date +'%Y%m%d%H%M%S' -d "${year}-${month}-${day} ${backhour}:${backmin}:${backsec} +${dif_date} day"`
+
+  elif [ 0 -lt ${aveday}0 ];then
+     incretime=$(date +'%Y%m%d%H%M%S' -d "${year}-${month}-${day} +${aveday} day")
+     backtime=`date +'%Y%m%d%H%M%S' -d "${year}-${month}-${day} ${backhour}:${backmin}:${backsec}"`
+
+  elif [ 0 -lt ${avehour}0 ];then
+     incretime=$(date +'%Y%m%d%H%M%S' -d "${year}-${month}-${day} ${hour} +${avehour} hour")
+     backtime=`date +'%Y%m%d%H%M%S' -d "${year}-${month}-${day} ${hour}:${backmin}:${backsec}"`
+
+  elif [ 0 -lt ${avemin}0 ];then
+     incretime=$(date +'%Y%m%d%H%M%S' -d "${year}-${month}-${day} ${hour}:${minute} +${avemin} minute")
+     backtime=`date +'%Y%m%d%H%M%S' -d "${year}-${month}-${day} ${hour}:${minute}:${backsec}"`
+  fi
+}
+
+year=`date +%Y`
+month=`date +%m`
+week=`date +%W`
+weekday=`date +%w`
+day=`date +%d`
+hour=`date +%H`
+minute=`date +%M`
+second=`date +%S`
+
+varyear=`date +%Y`
+varmonth=`date +%m`
+varweek=`date +%W`
+varweekday=`date +%w`
+varday=`date +%d`
+
+initialize
+sys_check
+
+while true ; do
+
+curyear=`date +%Y`
+curmonth=`date +%m`
+curweek=`date +%W`
+curweekday=`date +%w`
+curday=`date +%d`
+curhour=`date +%H`
+curmin=`date +%M`
+cursec=`date +%S`
+
+dif_weekday=$[backweekday-weekday]
+dif_varweekday=$[1-varweekday]
+dif_date=$[weekday-backweekday]
+nowtime=`date +'%Y%m%d%H%M%S' -d "${curyear}-${curmonth}-${curday} ${curhour}:${curmin}:${cursec}"`
+
+if [ 0 -lt ${fulyear}0 ];then
+   LOGTIME=`date +'%Y%m'`
+   fultime=`date +'%Y%m%d%H%M%S' -d "${varyear}-${backmonth}-${backday} +${fulyear} year"`
+   if [ 1 -eq ${open_increment_back} ];then
+     arr_incretime_get
+   else
+     backtime=`date +'%Y%m%d%H%M%S' -d "${varyear}-${backmonth}-${backday} ${backhour}:${backmin}:${backsec}"`
+   fi
+     arr_backup
+
+elif [ 0 -lt ${fulmonth}0 ];then
+   LOGTIME=`date +'%Y%m'`
+   fultime=$(date +'%Y%m%d%H%M%S' -d "${varyear}-${varmonth}-${backday} +${fulmonth} month")
+   if [ 1 -eq ${open_increment_back} ];then
+     arr_incretime_get
+   else
+     backtime=`date +'%Y%m%d%H%M%S' -d "${varyear}-${varmonth}-${backday} ${backhour}:${backmin}:${backsec}"`
+   fi
+     arr_backup
+
+elif [ 0 -lt ${fulweek}0 ];then
+   LOGTIME=`date +'%Y%m'`
+   fultime=$(date +'%Y%m%d%H%M%S' -d "${varyear}-${varmonth}-${varday} +${fulweek} week ${dif_varweekday} day")
+   if [ 1 -eq ${open_increment_back} ];then
+     arr_incretime_get
+   else
+     backtime=`date +'%Y%m%d%H%M%S' -d "${varyear}-${varmonth}-${varday} ${backhour}:${backmin}:${backsec} +${dif_date} day"`
+   fi
+     arr_backup
+
+elif [ 0 -lt ${fulday}0 ];then
+   LOGTIME=`date +'%Y%m'`
+   fultime=$(date +'%Y%m%d%H%M%S' -d "${varyear}-${varmonth}-${varday} +${fulday} day")
+   if [ 1 -eq ${open_increment_back} ];then
+     arr_incretime_get
+   else
+     backtime=`date +'%Y%m%d%H%M%S' -d "${varyear}-${varmonth}-${varday} ${backhour}:${backmin}:${backsec}"`
+   fi
+     arr_backup
+fi
+
+sleep ${sleep_time}
+done

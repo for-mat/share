@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# chkconfig: 2345 65 35
+# description: A os and database monitoring system.
+
+basedir=
+
+ if [ -z ${basedir} ]
+ then
+  basedir=`find / -name mysql_soft_sh`
+ fi
+
+cd ${basedir}
+
+T_warning()
+{
+ result=$?
+ if [ 0 -ne ${result} ];then
+   echo "myback.server $1..." " failed!"
+ else
+   echo "myback.server $1..." " successful!"
+ fi
+}
+
+
+case $1 in
+start)
+ `nohup ${basedir}/mysql_timing_plan >>${basedir}/nohup.out 2>&1 &`
+ T_warning start
+            ;;
+
+stop)
+ pid=`ps -ef|grep mysql_timing_plan| grep -v grep | awk '{print $2}'`
+ kill $pid
+ T_warning stop
+            ;;
+
+restart)
+ pid=`ps -ef|grep mysql_timing_plan| grep -v grep | awk '{print $2}'`
+ kill ${pid}
+
+ `nohup ${basedir}/mysql_timing_plan >>${basedir}/nohup.out 2>&1 &`
+ T_warning restart
+            ;;
+
+*)
+echo "Usage:myback.service start | stop | restart"
+            ;;
+esac

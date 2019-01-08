@@ -1,0 +1,196 @@
+﻿# For all the following commands HOME should be set to the directory that has .my.cnf file with password information.
+
+# Flexible parameter to grab global variables. On the frontend side, use keys like mysql.status[Com_insert].
+# Key syntax is mysql.status[variable].
+# UserParameter=mysql.status[*],echo "show global status where Variable_name='$1';" | HOME=/var/lib/zabbix mysql -N | awk '{print $$2}'
+
+# Flexible parameter to determine database or table size. On the frontend side, use keys like mysql.size[zabbix,history,data].
+
+#disk
+UserParameter=basedir,df -k $(echo "show variables like 'basedir';"|mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -N |awk '{print $2}') |grep -v Used |awk '{print $6}'
+UserParameter=datadir,df -k $(echo "show variables like 'datadir';"|mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -N |awk '{print $2}') |grep -v Used |awk '{print $6}'
+UserParameter=sysdisk.tatol,df -k / |grep -v Used |awk '{print $2/1024^2}'
+UserParameter=sysdisk.free,df -k / |grep -v Used |awk '{print $4/1024^2}'
+UserParameter=sysdisk.pused,df -k / |grep -v Used |awk '{print $5*1}'
+UserParameter=basedir.tatol,df -k $(echo "show variables like 'basedir';"|mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -N |awk '{print $2}')|grep -v Used |awk '{print $2/1024^2}'
+UserParameter=basedir.free,df -k $(echo "show variables like 'basedir';"|mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -N |awk '{print $2}')|grep -v Used |awk '{print $4/1024^2}'
+UserParameter=basedir.pused,df -k $(echo "show variables like 'basedir';"|mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -N |awk '{print $2}')|grep -v Used |awk '{print $5*1}'
+UserParameter=datadir.tatol,df -k $(echo "show variables like 'datadir';"|mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -N |awk '{print $2}')|grep -v Used |awk '{print $2/1024^2}'
+UserParameter=datadir.free,df -k $(echo "show variables like 'datadir';"|mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -N |awk '{print $2}')|grep -v Used |awk '{print $4/1024^2}'
+UserParameter=datadir.pused,df -k $(echo "show variables like 'datadir';"|mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -N |awk '{print $2}')|grep -v Used |awk '{print $5*1}'
+
+#mysql
+UserParameter=mysql.version,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "select version();"
+UserParameter=mysql.ping,mysqladmin -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock ping|grep -c alive
+#UserParameter=mysql.ping,echo $(mysql -uzabbix -pzabbix -e "status"|grep Uptime|awk '{print $2$3$4$5$6$7}')|awk '{if($1=null){print 0}else{print 1}}'
+
+#slave
+UserParameter=mysql.slave.fileget,echo $(/usr/local/zabbix/check/slave/mysql.slave)
+UserParameter=mysql.slave.Slave_IO_Running,echo $(cat /usr/local/zabbix/check/slave/repli.log|grep "Slave_IO_Running:" |awk -F': ' '{print $2}' |awk '{if($1=="Yes"){print 1}else{print 0}}') $(cat /usr/local/zabbix/check/slave/repli.log|wc -l)|awk '{if($2=="0"){print 0}else{print $1}}'
+UserParameter=mysql.slave.Slave_SQL_Running,echo $(cat /usr/local/zabbix/check/slave/repli.log|grep "Slave_SQL_Running:" |grep -v State |awk -F': ' '{print $2}' |awk '{if($1=="Yes"){print 1}else{print 0}}') $(cat /usr/local/zabbix/check/slave/repli.log|wc -l)|awk '{if($2=="0"){print 0}else{print $1}}'
+UserParameter=mysql.slave.Relay_Log_Pos,echo $(cat /usr/local/zabbix/check/slave/repli.log|grep "Relay_Log_Pos:" |awk -F': ' '{print $2}') $(cat /usr/local/zabbix/check/slave/repli.log|wc -l)|awk '{if($2=="0"){print 0}else{print $1}}'
+UserParameter=mysql.slave.Exec_Master_Log_Pos,echo $(cat /usr/local/zabbix/check/slave/repli.log|grep "Exec_Master_Log_Pos:" |awk -F': ' '{print $2}') $(cat /usr/local/zabbix/check/slave/repli.log|wc -l)|awk '{if($2=="0"){print 0}else{print $1}}'
+UserParameter=mysql.slave.Read_Master_Log_Pos,echo $(cat /usr/local/zabbix/check/slave/repli.log|grep "Read_Master_Log_Pos:" |awk -F': ' '{print $2}') $(cat /usr/local/zabbix/check/slave/repli.log|wc -l)|awk '{if($2=="0"){print 0}else{print $1}}'
+UserParameter=mysql.slave.Relay_Log_File,echo $(cat /usr/local/zabbix/check/slave/repli.log|grep "Relay_Log_File:" |awk -F': ' '{print $2}') $(cat /usr/local/zabbix/check/slave/repli.log|wc -l)|awk '{if($2=="0"){print 0}else{print $1}}'
+UserParameter=mysql.slave.Relay_Master_Log_File,echo $(cat /usr/local/zabbix/check/slave/repli.log|grep Relay_Master_Log_File: |awk -F': ' '{print $2}') $(cat /usr/local/zabbix/check/slave/repli.log|wc -l)|awk '{if($2=="0"){print 0}else{print $1}}'
+UserParameter=mysql.slave.Master_Log_File,echo $(cat /usr/local/zabbix/check/slave/repli.log|grep "Master_Log_File:" |grep -v Relay |awk -F': ' '{print $2}') $(cat /usr/local/zabbix/check/slave/repli.log|wc -l)|awk '{if($2=="0"){print 0}else{print $1}}'
+UserParameter=mysql.slave.Master_HOST,echo $(cat /usr/local/zabbix/check/slave/repli.log|grep "Master_Host:" |awk -F': ' '{print $2}') $(cat /usr/local/zabbix/check/slave/repli.log|wc -l)|awk '{if($2=="0"){print 0}else{print $1}}'
+UserParameter=mysql.slave.Master_Delay,echo $(cat /usr/local/zabbix/check/slave/repli.log|grep "Seconds_Behind_Master:" |awk -F': ' '{print $2}') |awk '{if($1==""){print 0}else{print $1}}' 
+
+#binlog
+UserParameter=mysql.Nbinlog,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show binary logs;" |grep -v File_size|wc -l
+UserParameter=mysql.Mbinlog,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show binary logs;" |grep -v File_size|awk '{if($2>0){sum+=$2}else{sum==0}}END{print sum/1024/1024}'
+
+#connection
+UserParameter=mysql.max_connections,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'max_connections';"|grep -v Value |awk '{print $2}'
+UserParameter=mysql.Max_used_connections,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Max_used_connections';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Max_connections_used_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Max_used_connections';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'max_connections';"| grep -v Value |awk '{print $2}')| awk '{printf("%5.4f\n",$1/$2*100)}'
+UserParameter=mysql.Connect_use_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show full processlist;" |wc -l) $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'max_connections';"| grep -v Value |awk '{print $2}')| awk '{if($1*$2==0){print 0}else{printf("%5.4f\n",$1/$2*100)}}'
+UserParameter=mysql.Nprocesslist,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show full processlist;"  |wc -l
+UserParameter=mysql.Aborted_connects,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Aborted_connects';"|grep -v Value |awk '{print $2}'
+
+
+#Handler_read
+UserParameter=mysql.Handler_read_first,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Handler_read_first';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Handler_read_key,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Handler_read_key';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Handler_read_next,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Handler_read_next';" | grep -v Value | awk '{print $2}'
+UserParameter=mysql.Handler_read_prev,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Handler_read_prev';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Handler_read_rnd,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Handler_read_rnd';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Handler_read_rnd_next,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Handler_read_rnd_next';"| grep -v Value |awk '{print $2}'
+
+#Key_%
+UserParameter=mysql.Key_buffer_size,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'key_buffer_size';" | grep -v Value |awk '{print $2/1024^2}'
+UserParameter=mysql.Key_reads,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'key_reads';"| grep -v Value |awk '{print $2/1000}'
+UserParameter=mysql.Key_read_requests,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'key_read_requests';"| grep -v Value |awk '{print $2/1000}'
+UserParameter=mysql.Key_cache_miss_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'key_reads';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'key_read_requests';"| grep -v Value |awk '{print $2}')| awk '{if($1*$2==0){print 0}else{printf("%5.4f\n",$1/$2)}}'
+UserParameter=mysql.Key_blocks_used,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'key_blocks_used';"| grep -v Value |awk '{print $2/1000}'
+UserParameter=mysql.Key_blocks_unused,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'key_blocks_unused';"| grep -v Value |awk '{print $2/1000}'
+UserParameter=mysql.Key_blocks_used_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'key_blocks_used';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'key_blocks_unused';"| grep -v Value |awk '{print $2}')| awk '{printf("%5.4f\n",$1/($1+$2)*100)}'
+
+#innodb_%
+UserParameter=mysql.Innodb_buffer_pool_size,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'innodb_buffer_pool_size';"| grep -v Value |awk '{print $2/1024^2}'
+UserParameter=mysql.Innodb_log_file_size,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'innodb_log_file_size';"| grep -v Value |awk '{print $2/1024^2}'
+UserParameter=mysql.Innodb_log_buffer_size,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e  "show global variables like 'innodb_log_buffer_size';"| grep -v Value |awk '{print $2/1024^2}'
+UserParameter=mysql.Innodb_buffer_pool_reads,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Innodb_buffer_pool_reads';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Innodb_buffer_pool_read_requests,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Innodb_buffer_pool_read_requests';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Innodb_Hit_Ratios,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Innodb_buffer_pool_reads';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Innodb_buffer_pool_read_requests';"| grep -v Value |awk '{print $2}')| awk '{if($1*$2==0){print 0}else{printf("%5.4f\n",(1-$1/$2)*100)}}'
+
+
+#table_cache
+UserParameter=mysql.Table_open_cache,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'table_open_cache';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Open_tables,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'open_tables';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Opened_tables,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'opened_tables';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Open_tables_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'open_tables';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'opened_tables';"| grep -v Value |awk '{print $2}')| awk '{if($1*$2==0){print 0}else{printf("%3.2f\n",$1/$2*100)}}'
+UserParameter=mysql.Table_open_cache_used_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'open_tables';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'table_open_cache';"| grep -v Value |awk '{print $2}')| awk '{if($1*$2==0){print 0}else{printf("%3.2f\n",$1/$2*100)}}'
+
+#thread_cache
+UserParameter=mysql.Thread_cache_size,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'thread_cache_size';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Threads_cached,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Threads_cached';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Threads_connected,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Threads_connected';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Threads_created,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Threads_created';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Threads_running,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Threads_running';"| grep -v Value |awk '{print $2}'
+
+#Qcache
+UserParameter=mysql.Qcache_free_blocks,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_free_blocks';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Qcache_free_memory,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_free_memory';"| grep -v Value |awk '{print $2/1024^2}'
+UserParameter=mysql.Qcache_hits,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_hits';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Qcache_inserts,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_inserts';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Qcache_lowmem_prunes,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_lowmem_prunes';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Qcache_not_cached,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_not_cached';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Qcache_queries_in_cache,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_queries_in_cache';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Qcache_total_blocks,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_total_blocks';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Qcache_fragment_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_free_blocks';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_total_blocks';"| grep -v Value |awk '{print $2}')| awk '{printf("%5.4f\n",$1/$2*100)}'
+UserParameter=mysql.Qcache_used_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'query_cache_size';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_free_memory';"| grep -v Value |awk '{print $2}')| awk '{printf("%5.4f\n",($1-$2)/$1*100)}'
+UserParameter=mysql.Qcache_hits_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_hits';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Qcache_inserts';"| grep -v Value |awk '{print $2}')| awk '{if($1*$2==0){print 0}else{printf("%5.4f\n",$1/($1+$2)*100)}}'
+
+#Query_cache
+UserParameter=mysql.Query_cache_size,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'query_cache_size';"| grep -v Value |awk '{print $2/1024^2}'
+UserParameter=mysql.Query_cache_limit,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'query_cache_limit';"| grep -v Value |awk '{print $2/1024^2}'
+UserParameter=mysql.Query_cache_min_res_unit,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'query_cache_min_res_unit';"| grep -v Value |awk '{print $2/1024}'
+
+#sort_%
+UserParameter=mysql.Sort_merge_passes,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Sort_merge_passes';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Sort_range,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Sort_range';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Sort_rows,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Sort_rows';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Sort_scan,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Sort_scan';"| grep -v Value |awk '{print $2}'
+
+#Com_%
+UserParameter=mysql.Com_select,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'com_select';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Select_scan,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show status like 'Select_scan';"|grep -v Value|awk '{print $2}'
+UserParameter=mysql.Com_insert,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'com_insert';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Com_insert_select,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'com_insert_select';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Com_update,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'com_update';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Com_replace,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'com_replace';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Com_replace_select,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'com_replace_select';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Table_scan_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Handler_read_rnd_next';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'com_select';"| grep -v Value |awk '{print $2}')| awk '{printf("%3.2f\n",$1/$2*100)}'
+UserParameter=mysql.Com_delete,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'com_delete';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Select_full_join,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e " SHOW GLOBAL STATUS LIKE 'Select_full_join';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Select_full_join_per_minute,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Select_full_join';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Uptime';"| grep -v Value |awk '{print $2}')| awk '{if($1*$2==0){print 0}else{printf("%5.4f\n",$1/$2*60)}}'
+UserParameter=mysql.commit,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'com_commit';" -N |awk '{if($2){print $2}else{print 0}}'
+UserParameter=mysql.rollback,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'com_rollback';" -N |awk '{if($2){print $2}else{print 0}}'
+
+
+#Open_file
+UserParameter=mysql.Open_files,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'open_files';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Open_files_limit,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'open_files_limit';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Open_files_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'open_files';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global variables like 'open_files_limit';"| grep -v Value |awk '{print $2}')| awk '{printf("%3.2f\n",$1/$2*100)}'
+
+#tmp_table
+UserParameter=mysql.Created_tmp_disk_tables,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'created_tmp_disk_tables';"| grep -v Value |awk '{print $2/1024}'
+UserParameter=mysql.Created_tmp_tables,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'created_tmp_tables';"| grep -v Value |awk '{print $2/1024}'
+UserParameter=mysql.Created_tmp_disk_tables_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'created_tmp_disk_tables';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'created_tmp_tables';"| grep -v Value |awk '{print $2}')| awk '{printf("%3.2f\n",$1/$2*100)}'
+
+#table_lock
+UserParameter=mysql.Table_locks_immediate,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Table_locks_immediate';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Table_locks_waited,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'table_locks_waited';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Engine_select,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'Table_locks_immediate';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show global status like 'table_locks_waited';"| grep -v Value |awk '{print $2}')| awk '{if($1*$2==0){print 0}else{printf("%5.4f\n",$1/$2)}}'
+
+#I/O
+UserParameter=mysql.last_second,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show engine innodb status\G" |grep calculated|awk '{print $8}'
+UserParameter=mysql.IO_read,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show engine innodb status\G"|grep "aio read"|grep -v "ibuf"|awk '{print $5}'
+UserParameter=mysql.IO_write,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show engine innodb status\G"|grep "aio write"|awk '{print $13}'
+UserParameter=mysql.IO_log,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show engine innodb status\G"|grep "log i/o's:"|awk '{print $7}'|awk -F',' '{print $1}'
+UserParameter=mysql.IO_ibuf,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show engine innodb status\G"|grep "ibuf"|awk '{print $4}'|awk -F ',' '{print $1}'
+UserParameter=mysql.os_file_read,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show engine innodb status\G"|grep "OS file"|awk '{print $1}'
+UserParameter=mysql.os_file_write,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show engine innodb status\G"|grep "OS file"|awk '{print $5}'
+UserParameter=mysql.r.s,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show engine innodb status\G"|grep "fsyncs/s"|awk '{print $1}'
+UserParameter=mysql.w.s,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show engine innodb status\G"|grep "fsyncs/s"|awk '{print $6}'
+UserParameter=mysql.fsyncs.s,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "show engine innodb status\G"|grep "fsyncs/s"|awk '{print $8}'
+
+
+#Slow_query
+UserParameter=mysql.Slow_queries,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Slow_queries';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Uptime,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Uptime';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Questions,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Questions';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Slow_queries_per_minute,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Slow_queries';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Uptime';"| grep -v Value |awk '{print $2}')| awk '{if($1*$2==0){print 0}else{printf("%5.4f\n",$1/$2*60)}}'
+UserParameter=mysql.Slow_queries_rate,echo $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Slow_queries';"| grep -v Value |awk '{print $2}') $(mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Questions';"| grep -v Value |awk '{print $2}')| awk '{if($1*$2==0){print 0}else{printf("%5.4f\n",$1/$2*100)}}'
+
+#row_lock
+UserParameter=mysql.Row_lock_current_waits,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Innodb_row_lock_current_waits';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Row_lock_time,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Innodb_row_lock_time';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Row_lock_time_avg,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Innodb_row_lock_time_avg';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Row_lock_time_max,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Innodb_row_lock_time_max';"| grep -v Value |awk '{print $2}'
+UserParameter=mysql.Row_lock_waits,mysql -uzabbix -pzabbix --socket=/opt/mysql/tmp/mysql.sock -e "SHOW GLOBAL STATUS LIKE 'Innodb_row_lock_waits';"| grep -v Value |awk '{print $2}'
+
+##cpu-top5
+UserParameter=mysql.cpu.top,top -b -n 1|head -n 12|tail -n 5 |awk '{print $9,$10,$11,$12}'
+
+#vip.change
+UserParameter=mysql.vip.change,/usr/local/zabbix/check/arrp_vip/vipck.sh
+UserParameter=keepalived.Nproc,ps -ef|grep -v "grep"|grep "keepalived"|wc -l
+UserParameter=Tcp_packet_ploss,/bin/ping 10.212.126.8 -c 4 |grep "packet loss"|awk -F'%' '{print $1}'|awk '{print $NF}'
+
+#discovery
+UserParameter=disk.discovery,/usr/local/zabbix/check/disk/diskfd.sh
+
+
+#log_backup
+UserParameter=mysql_backup_Nproc,/usr/local/zabbix/check/mysqlbk/my_backlog_control proc_nub
+UserParameter=mysql_backup_Nbkerr,/usr/local/zabbix/check/mysqlbk/my_backlog_control nub_backerr
+UserParameter=mysql_backup_bkresult,/usr/local/zabbix/check/mysqlbk/my_backlog_control back_result
+UserParameter=mysql_backup_Nmeberr,/usr/local/zabbix/check/mysqlbk/my_backlog_control nub_meberr
+UserParameter=mysql_backup_mebreslut,/usr/local/zabbix/check/mysqlbk/my_backlog_control meb_result
+UserParameter=mysql_backup_Nmverr,/usr/local/zabbix/check/mysqlbk/my_backlog_control nub_moveerr
+UserParameter=mysql_backup_mvresult,/usr/local/zabbix/check/mysqlbk/my_backlog_control move_result
+UserParameter=mysql_backup_Nnbuerr,/usr/local/zabbix/check/mysqlbk/my_backlog_control nub_nbuerr
+UserParameter=mysql_backup_nburesult,/usr/local/zabbix/check/mysqlbk/my_backlog_control nbu_result
